@@ -181,6 +181,27 @@ services:
             - jwt_public_key
             - jwt_private_key
 
+    wiremock:
+        container_name: mpy-wiremock
+        image: wiremock/wiremock:3x-alpine
+        networks:
+            - traefik-public
+            - default
+        volumes:
+            - ./wiremock:/home/wiremock
+        healthcheck:
+            test: wget --no-verbose --tries=1 --spider http://localhost/__admin/health || exit 1
+        command:
+            - '--port=80'
+            - '--global-response-templating'
+            - '--verbose'
+        labels:
+            - traefik.enable=true
+            - traefik.docker.network=traefik-public
+            - traefik.http.routers.wiremock.rule=Host(`wiremock.localhost`)
+            - traefik.http.services.wiremock.loadBalancer.server.port=80
+            - traefik.http.routers.wiremock.entryPoints=http
+
     pg:
         container_name: mpy-postgres
         image: postgres:14.0-alpine

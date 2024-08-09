@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * Yii Application Initialization Tool
  *
@@ -14,7 +17,7 @@ if (!extension_loaded('openssl')) {
 
 $params = getParams();
 $root = str_replace('\\', '/', __DIR__);
-$envs = require "$root/environments/index.php";
+$envs = require "$root/src/Infrastructure/Environment/index.php";
 $envNames = array_keys($envs);
 
 echo "Yii Application Initialization Tool v1.0\n\n";
@@ -68,12 +71,12 @@ echo "\n  Start initialization ...\n\n";
 $files = getFileList($rootPath);
 if (isset($env['skipFiles'])) {
     $skipFiles = $env['skipFiles'];
-    array_walk($skipFiles, function(&$value) use($env, $root) { $value = "$root/$value"; });
+    array_walk($skipFiles, static function(&$value) use($env, $root) { $value = "$root/$value"; });
     $files = array_diff($files, array_intersect_key($env['skipFiles'], array_filter($skipFiles, 'file_exists')));
 }
 $all = false;
 foreach ($files as $file) {
-    if (!copyFile($root, "environments/{$env['path']}/$file", $file, $all, $params)) {
+    if (!copyFile($root, "src/Infrastructure/Environment/{$env['path']}/$file", $file, $all, $params)) {
         break;
     }
 }
@@ -86,7 +89,7 @@ foreach(array_column($envs, 'path') as $envPath) {
 	$filesToRemove =
         array_merge(
             $filesToRemove,
-            array_diff(getFileList("$root/environments/{$envPath}"), $files, $filesToRemove, $skipFiles)
+            array_diff(getFileList("$root/src/Infrastructure/Environment/{$envPath}"), $files, $filesToRemove, $skipFiles)
         );
 }
 $filesToRemove = array_filter($filesToRemove, 'file_exists');
@@ -111,7 +114,7 @@ foreach ($callbacks as $callback) {
 
 echo "\n  ... initialization completed.\n\n";
 
-function getFileList($root, $basePath = '')
+function getFileList($root, $basePath = ''): array
 {
     $files = [];
     $handle = opendir($root);
@@ -131,7 +134,7 @@ function getFileList($root, $basePath = '')
     return $files;
 }
 
-function copyFile($root, $source, $target, &$all, $params)
+function copyFile($root, $source, $target, &$all, $params): bool
 {
     if (!is_file($root . '/' . $source)) {
         echo "       skip $target ($source not exist)\n";
@@ -175,7 +178,7 @@ function copyFile($root, $source, $target, &$all, $params)
     return true;
 }
 
-function removeFile($root, $target, &$all, $params)
+function removeFile($root, $target, &$all, $params): bool
 {
 	if (is_file($root . '/' . $target)) {
 		if ($all) {
@@ -207,7 +210,7 @@ function removeFile($root, $target, &$all, $params)
 	return true;
 }
 
-function getParams()
+function getParams(): array
 {
     $rawParams = [];
     if (isset($_SERVER['argv'])) {
@@ -227,7 +230,7 @@ function getParams()
     return $params;
 }
 
-function setWritable($root, $paths)
+function setWritable($root, $paths): void
 {
     foreach ($paths as $writable) {
         if (is_dir("$root/$writable")) {
@@ -242,7 +245,7 @@ function setWritable($root, $paths)
     }
 }
 
-function setExecutable($root, $paths)
+function setExecutable($root, $paths): void
 {
     foreach ($paths as $executable) {
         if (file_exists("$root/$executable")) {
@@ -257,7 +260,7 @@ function setExecutable($root, $paths)
     }
 }
 
-function setCookieValidationKey($root, $paths)
+function setCookieValidationKey($root, $paths): void
 {
     foreach ($paths as $file) {
         echo "   generate cookie validation key in $file\n";
@@ -270,28 +273,11 @@ function setCookieValidationKey($root, $paths)
     }
 }
 
-function createSymlink($root, $links)
-{
-    foreach ($links as $link => $target) {
-        //first removing folders to avoid errors if the folder already exists
-        @rmdir($root . "/" . $link);
-        //next removing existing symlink in order to update the target
-        if (is_link($root . "/" . $link)) {
-            @unlink($root . "/" . $link);
-        }
-        if (@symlink($root . "/" . $target, $root . "/" . $link)) {
-            echo "      symlink $root/$target $root/$link\n";
-        } else {
-            printError("Cannot create symlink $root/$target $root/$link.");
-        }
-    }
-}
-
 /**
  * Prints error message.
  * @param string $message message
  */
-function printError($message)
+function printError($message): void
 {
     echo "\n  " . formatMessage("Error. $message", ['fg-red']) . " \n";
 }
@@ -304,7 +290,7 @@ function printError($message)
  *
  * @return boolean true if the stream supports ANSI colors, otherwise false.
  */
-function ansiColorsSupported()
+function ansiColorsSupported(): bool
 {
     return DIRECTORY_SEPARATOR === '\\'
         ? getenv('ANSICON') !== false || getenv('ConEmuANSI') === 'ON'
@@ -316,7 +302,7 @@ function ansiColorsSupported()
  * @param string $name style name
  * @return integer ANSI code of style.
  */
-function getStyleCode($name)
+function getStyleCode($name): int
 {
     $styles = [
         'bold' => 1,
@@ -346,7 +332,7 @@ function getStyleCode($name)
  * @param string[] $styles styles
  * @return string formatted message.
  */
-function formatMessage($message, $styles)
+function formatMessage($message, $styles): string
 {
     if (empty($styles) || !ansiColorsSupported()) {
         return $message;
